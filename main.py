@@ -2,8 +2,6 @@
 
 from flask import Flask, render_template, request, redirect, url_for
 import os
-import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 import re
 import textwrap
