@@ -1,1 +1,1 @@
-web: gunicorn main:app --worker-class gevent --timeout 120
+web: gunicorn main:app --worker-class gevent --timeout 300
