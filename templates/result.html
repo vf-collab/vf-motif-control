@@ -1,0 +1,89 @@
+<link rel="icon" href="{{ url_for('static', filename='favicon.png') }}">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sequence Optimization Result</title>
+    <style>
+        /* Match the color theme of index.html */
+        body {
+            background-color: #1A1A1A; /* Dark background */
+            font-family: Arial, sans-serif;
+            color: #AAAAAA; /* Light gray text color */
+        }
+        h1 {
+            color: #7683F0; /* Light blue-purple main heading color */
+        }
+        p {
+            color: #AAAAAA;
+        }
+        button {
+            background-color: #F26961; /* Coral red button */
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #D35750; /* Darker coral red for hover effect */
+        }
+        /* Styling for the result box */
+        .result-box {
+            background-color: #333333; /* Dark gray result box background */
+            padding: 20px;
+            border: 2px solid #555555; /* Slightly lighter border */
+            border-radius: 5px;
+            margin: 20px 0;
+            white-space: pre-wrap; /* Ensures long sequences wrap within the box */
+            color: #FFFFFF; /* White text for the result box */
+            font-family: "Courier New", monospace;
+            min-height: 150px; /* Minimum height for the box */
+            max-height: 500px; /* Max height with scroll if content is too large */
+            overflow-y: auto; /* Add scroll if content exceeds max height */
+            width: 100%; /* Full width */
+            box-sizing: border-box; /* Ensure padding and border are included in the element's width and height */
+        }
+        code {
+            white-space: pre-wrap; /* Ensures text inside <code> wraps as well */
+            word-break: break-all; /* Break long words if needed to prevent overflow */
+            margin: 0; /* Remove default margin */
+            padding: 0; /* Remove default padding */
+            display: block; /* Ensure it behaves like a block element */
+        }
+    </style>
+    <script>
+        function copyToClipboard() {
+            // Select the content inside the <code> tag
+            var codeElement = document.querySelector('.result-box code');
+            var range = document.createRange();
+            range.selectNode(codeElement);
+            window.getSelection().removeAllRanges();  // Clear previous selection
+            window.getSelection().addRange(range);  // Select the text
+            document.execCommand('copy');  // Copy the selected text to clipboard
+            window.getSelection().removeAllRanges();  // Deselect the text
+
+            // Optionally, alert the user that the content has been copied
+            alert("Sequence copied to clipboard!");
+        }
+    </script>
+</head>
+<body>
+    <h1>Optimized Sequence Result</h1>
+    <p>The optimized sequence is shown below. You can retain a copy for your records:</p>
+
+    <!-- Optimized sequence display -->
+    <div class="result-box">
+        <code>{{ optimized_seq }}</code>
+    </div>
+
+    <!-- Copy Button -->
+    <button onclick="copyToClipboard()">Copy Sequence</button>
+
+    <!-- Button to go back to the input form -->
+    <form action="/" method="GET">
+        <button type="submit">Optimize Another Sequence</button>
+    </form>
+</body>
+</html>
