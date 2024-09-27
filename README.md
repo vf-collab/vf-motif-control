@@ -1,5 +1,4 @@
-Overview
-This is a Flask-based web application for optimizing DNA or protein sequences. The app allows users to input sequences and provides various settings for optimizing the sequence, such as GC content, CpG depletion levels, and codon bias.
+Overview: This is a Flask-based web application for optimizing DNA or protein sequences. The app allows users to input sequences and provides various settings for optimizing the sequence, such as GC content, CpG depletion levels, and codon bias.
 
 Features
 Sequence Input: Enter DNA or protein sequences as raw text.
