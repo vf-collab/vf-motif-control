@@ -1,12 +1,32 @@
-from flask import Flask, render_template, request, flash
+from flask import Flask, render_template, request, redirect, url_for, jsonify
+from celery import Celery
 import pandas as pd
 import re
-from app import codon_optimization, pattern_generator
+import numpy as np
+from app import codon_optimization, enzyme_utils, progress_utils, sequence_utils, pattern_generator
 
+# Initialize Flask app
 app = Flask(__name__)
-app.secret_key = 'vector-barcelona-rain-tehran-obvious-shenanigans'  # Required for flashing messages
 
-# Define a dictionary of codon tables and their corresponding CSV file paths
+# Celery configuration
+app.config.update(
+    CELERY_BROKER_URL='redis://localhost:6379/0',  # Using Redis as the broker
+    CELERY_RESULT_BACKEND='redis://localhost:6379/0'  # Store the result in Redis
+)
+
+# Initialize Celery
+def make_celery(app):
+    celery = Celery(
+        app.import_name,
+        backend=app.config['CELERY_RESULT_BACKEND'],
+        broker=app.config['CELERY_BROKER_URL']
+    )
+    celery.conf.update(app.config)
+    return celery
+
+celery = make_celery(app)
+
+# Codon tables and settings
 codon_tables = {
     'Homo sapiens': 'data/homo.csv',
     'Mus musculus': 'data/Mus_musculus.csv',
@@ -18,76 +38,101 @@ codon_tables = {
     'HIV-1': 'data/HIV-1.csv'
 }
 
-# Define GC optimization levels
 optimization_levels = {
     'Low (40-50% GC)': (45, 55),
     'Low medium (45-55% GC)': (55, 65),
     'High medium (50-60% GC)': (60, 73),
-    'High (55-66% GC)': (64, 77),
-    'Very high (60-70% GC)': (75, 85)
+    'High (55-66% GC)': (65, 77),
+    'Very high (60-70% GC)': (73, 83)
 }
 
-# Allowed characters for sequence input (Amino acid single-letter codes, *, X)
 allowed_characters = set("ARNDCQEGHILKMFPSVTWYX*")
 
+# Task for background codon optimization
+@celery.task
+def run_codon_optimization(sanitized_sequence, selected_codon_table, use_advanced_settings, params):
+    # Retrieve codon table data
+    codon_df = pd.read_csv(codon_tables[selected_codon_table])
+
+    if use_advanced_settings:
+        selected_gc_opt = params['selected_gc_opt']
+        cpg_depletion_level = params['cpg_depletion_level']
+        codon_bias_or_gc = params['codon_bias_or_gc']
+        pattern = params['pattern']
+        pattern2 = params['pattern2']
+        expedition = params['expedition']
+    else:
+        selected_gc_opt = (63, 77)
+        cpg_depletion_level = "None"
+        codon_bias_or_gc = "GC richness"
+        pattern = params['pattern']
+        pattern2 = params['pattern2']
+        expedition = True
+
+    # Call the codon optimization function
+    optimized_seq = codon_optimization(
+        uploaded_seq_file=sanitized_sequence,
+        cpg_depletion_level=cpg_depletion_level,
+        codon_bias_or_GC=codon_bias_or_gc,
+        pattern=pattern,
+        pattern2=pattern2,
+        codon_df=codon_df,
+        selected_GC_opt=selected_gc_opt,
+        expedite=expedition
+    )
+    return optimized_seq
+
+# Flask route to submit form and process codon optimization
 @app.route("/", methods=["GET", "POST"])
 def index():
-    optimized_seq = None  # Initialize the result as None
     if request.method == "POST":
         try:
             # Retrieve and sanitize the sequence input
             sequence_input = request.form.get("sequence_input").strip().upper()
             sanitized_sequence = ''.join([char for char in sequence_input if char in allowed_characters])
 
-            # Check if sanitized sequence is valid (not empty and meets length criteria)
             if not sanitized_sequence:
-                flash("Error: The submitted sequence contains invalid characters or is empty. Please submit a valid DNA or protein sequence.")
-                return render_template("index.html", codon_tables=codon_tables.keys(), optimization_levels=optimization_levels.keys(), optimized_seq=None)
+                return jsonify({"error": "Invalid sequence"}), 400
 
-            # Get the selected codon table
+            # Get form data
             selected_codon_table = request.form.get("codon_table")
-            codon_df = pd.read_csv(codon_tables[selected_codon_table])
-
-            # Handle whether advanced settings are enabled
             use_advanced_settings = request.form.get("use_advanced_settings") == "on"
-            if use_advanced_settings:
-                # Get GC optimization level as a tuple
-                selected_gc_opt = optimization_levels[request.form.get("gc_content")]
-                # Get CpG depletion level and codon bias or GC selection
-                cpg_depletion_level = request.form.get("cpg_depletion")
-                codon_bias_or_gc = request.form.get("codon_bias_or_gc")
-                # Get enzymes input and generate patterns
-                enzyme_input = request.form.get("enzymes")
-                enzymes = re.split(',| ', enzyme_input) if enzyme_input else []  # Split enzyme input or leave empty
-                pattern, pattern2 = pattern_generator(enzymes)
-                expedition = request.form.get("expedition") == "Yes"
-            else:
-                # Default settings
-                enzymes = []
-                selected_gc_opt = (63, 77)
-                cpg_depletion_level = "None"
-                codon_bias_or_gc = "GC richness"
-                pattern, pattern2 = pattern_generator(enzymes)
-                expedition = True
 
-            # Call codon optimization function
-            optimized_seq = codon_optimization(
-                uploaded_seq_file=sanitized_sequence,
-                cpg_depletion_level=cpg_depletion_level,
-                codon_bias_or_GC=codon_bias_or_gc,
-                pattern=pattern,
-                pattern2=pattern2,
-                codon_df=codon_df,
-                selected_GC_opt=selected_gc_opt,
-                expedite=expedition
-            )
+            params = {}
+            if use_advanced_settings:
+                params['selected_gc_opt'] = optimization_levels[request.form.get("gc_content")]
+                params['cpg_depletion_level'] = request.form.get("cpg_depletion")
+                params['codon_bias_or_gc'] = request.form.get("codon_bias_or_gc")
+                enzyme_input = request.form.get("enzymes")
+                params['pattern'], params['pattern2'] = pattern_generator(re.split(',| ', enzyme_input) if enzyme_input else [])
+                params['expedition'] = request.form.get("expedition") == "Yes"
+            else:
+                params['pattern'], params['pattern2'] = pattern_generator([])
+
+            # Start the background task for codon optimization
+            task = run_codon_optimization.delay(sanitized_sequence, selected_codon_table, use_advanced_settings, params)
+
+            # Return task ID to allow the client to poll for results
+            return jsonify({"task_id": task.id})
 
         except Exception as e:
-            flash(f"Unexpected error occurred: {str(e)}")
-            return render_template("index.html", codon_tables=codon_tables.keys(), optimization_levels=optimization_levels.keys(), optimized_seq=None)
+            return jsonify({"error": str(e)}), 500
 
-    # Render the form and (if available) the optimized sequence
-    return render_template("index.html", codon_tables=codon_tables.keys(), optimization_levels=optimization_levels.keys(), optimized_seq=optimized_seq)
+    return render_template("index.html", codon_tables=codon_tables.keys(), optimization_levels=optimization_levels.keys())
+
+# Route to check the task status
+@app.route('/task_status/<task_id>')
+def task_status(task_id):
+    task = run_codon_optimization.AsyncResult(task_id)
+    if task.state == 'PENDING':
+        response = {'state': task.state, 'progress': 0}
+    elif task.state == 'PROGRESS':
+        response = {'state': task.state, 'progress': task.info.get('progress', 0)}
+    elif task.state == 'SUCCESS':
+        response = {'state': task.state, 'result': task.result}
+    else:
+        response = {'state': task.state, 'result': str(task.info)}
+    return jsonify(response)
 
 if __name__ == "__main__":
     app.run(debug=True)

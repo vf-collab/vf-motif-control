@@ -30,42 +30,34 @@
             background-color: #D35750; /* Darker coral red for hover effect */
         }
         .advanced-button {
-            background-color: #333333; /* Dark gray background for minimal button */
-            color: #AAAAAA; /* Light gray text color */
-            border: 1px solid #555555; /* Border to match the theme */
+            background-color: #333333;
+            color: #AAAAAA;
+            border: 1px solid #555555;
             padding: 10px;
             cursor: pointer;
         }
         .advanced-button:hover {
-            background-color: #555555; /* Slightly lighter gray hover effect */
+            background-color: #555555;
         }
         .advanced-settings {
             display: none;
-            margin-top: 15px; /* Add some space between the button and the options */
+            margin-top: 15px;
         }
         .form-container {
             padding: 20px;
-            background-color: #333333; /* Dark gray form background */
+            background-color: #333333;
             border-radius: 8px;
         }
         select, input, textarea {
-            background-color: #2C2C2C; /* Dark input background */
-            color: #FFFFFF; /* White input text */
-            border: 1px solid #555555; /* Slightly lighter border */
+            background-color: #2C2C2C;
+            color: #FFFFFF;
+            border: 1px solid #555555;
             padding: 10px;
             margin-bottom: 15px;
             width: 100%;
         }
         textarea {
-            width: 100%; /* Full width within its container */
-            max-width: 100%; /* Prevent it from growing beyond the container */
-            box-sizing: border-box; /* Include padding and border in width */
-            background-color: #2C2C2C; /* Dark input background */
-            color: #FFFFFF; /* White input text */
-            border: 1px solid #555555; /* Slightly lighter border */
-            padding: 10px;
-            margin-bottom: 15px;
-            resize: vertical; /* Allow vertical resizing */
+            resize: vertical;
         }
         option {
             background-color: #333333;
@@ -73,14 +65,14 @@
         }
         /* Spinner styling */
         .spinner {
-            display: none; /* Hidden by default */
-            border: 4px solid rgba(255, 255, 255, 0.3); /* Light gray border */
+            display: none;
+            border: 4px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
-            border-top: 4px solid #F26961; /* Coral red top border */
+            border-top: 4px solid #F26961;
             width: 40px;
             height: 40px;
             animation: spin 1s linear infinite;
-            margin: 10px auto; /* Center the spinner */
+            margin: 10px auto;
         }
 
         @keyframes spin {
@@ -90,20 +82,19 @@
 
         /* Result box styling */
         .result-box {
-            background-color: #333333; /* Dark gray result box background */
+            background-color: #333333;
             padding: 20px;
-            border: 2px solid #555555; /* Slightly lighter border */
+            border: 2px solid #555555;
             border-radius: 5px;
             margin: 20px 0;
-            white-space: pre-wrap; /* Ensures long sequences wrap within the box */
-            word-break: break-word; /* Break words if needed */
-            color: #FFFFFF; /* White text for the result box */
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #FFFFFF;
             font-family: "Courier New", monospace;
-            min-height: 150px; /* Minimum height for the box */
-            max-height: 500px; /* Max height with scroll if content is too large */
-            overflow-y: auto; /* Add scroll if content exceeds max height */
-            width: 100%; /* Full width */
-            box-sizing: border-box; /* Ensure padding and border are included in the element's width and height */
+            min-height: 150px;
+            max-height: 500px;
+            overflow-y: auto;
+            width: 100%;
         }
 
         .copy-button {
@@ -122,29 +113,56 @@
     <script>
         function toggleAdvancedSettings() {
             var advancedSettings = document.getElementById("advanced-settings");
-            if (advancedSettings.style.display === "none" || advancedSettings.style.display === "") {
-                advancedSettings.style.display = "block";
-            } else {
-                advancedSettings.style.display = "none";
-            }
+            advancedSettings.style.display = advancedSettings.style.display === "none" ? "block" : "none";
         }
 
-        // Show spinner when form is submitted
         function showSpinner() {
-            document.getElementById("spinner").style.display = "block"; // Show spinner
+            document.getElementById("spinner").style.display = "block";
         }
 
-        // Copy the optimized sequence to clipboard
         function copyToClipboard() {
             var resultBox = document.querySelector('.result-box code');
             var range = document.createRange();
             range.selectNode(resultBox);
-            window.getSelection().removeAllRanges();  // Clear any previous selection
-            window.getSelection().addRange(range);    // Select the text
-            document.execCommand('copy');             // Copy the selected text to clipboard
-            window.getSelection().removeAllRanges();  // Deselect the text
-            
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            document.execCommand('copy');
+            window.getSelection().removeAllRanges();
             alert("Sequence copied to clipboard!");
+        }
+
+        function pollTaskStatus(taskId) {
+            fetch(`/task_status/${taskId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.state === 'PENDING') {
+                        setTimeout(() => pollTaskStatus(taskId), 2000);
+                    } else if (data.state === 'SUCCESS') {
+                        document.getElementById("spinner").style.display = "none"; // Hide spinner
+                        document.getElementById("result").innerHTML = `<div class="result-box"><code>${data.result}</code></div>`;
+                        document.getElementById("copy-button").style.display = "block"; // Show the copy button
+                    }
+                })
+                .catch(err => console.error('Error fetching task status:', err));
+        }
+
+        function submitForm(event) {
+            event.preventDefault();
+            showSpinner(); // Show spinner
+            let formData = new FormData(event.target);
+            fetch("/", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.task_id) {
+                    pollTaskStatus(data.task_id); // Poll for task status
+                } else if (data.error) {
+                    alert(`Error: ${data.error}`);
+                }
+            })
+            .catch(err => console.error('Error submitting form:', err));
         }
     </script>
 </head>
@@ -153,12 +171,10 @@
         <h1>Sequence Optimizer</h1>
 
         <!-- Form to enter sequence and select codon table -->
-        <form method="POST" onsubmit="showSpinner()">
-            <!-- Sequence Input -->
+        <form id="optimization-form" onsubmit="submitForm(event)">
             <label for="sequence_input">Enter DNA or Protein sequence as raw text</label><br>
             <textarea name="sequence_input" rows="5" cols="50"></textarea><br>
 
-            <!-- Dropdown for selecting codon table -->
             <label for="codon_table">Select a codon table:</label>
             <select name="codon_table">
                 {% for table in codon_tables %}
@@ -166,76 +182,48 @@
                 {% endfor %}
             </select><br>
 
-            <!-- Advanced Settings button -->
             <button type="button" class="advanced-button" onclick="toggleAdvancedSettings()">Advanced Settings</button>
-
-            <!-- Advanced settings (initially hidden) -->
             <div id="advanced-settings" class="advanced-settings">
-                <div class="advanced-settings-container">
-                    <!-- Dropdown for selecting Target GC Richness -->
-                    <label for="gc_content">Target GC Richness:</label>
-                    <select id="gc_content" name="gc_content">
-                        <option value="Low">Low (40-50% GC)</option>
-                        <option value="Moderate">Moderate (50-55% GC)</option>
-                        <option value="High" selected>High (55-66% GC)</option> <!-- Set 'High' as the default option -->
-                        <option value="Very high">Very high (60-70% GC)</option>
-                    </select><br>
+                <!-- Advanced Settings Options -->
+                <label for="gc_content">Target GC Richness:</label>
+                <select id="gc_content" name="gc_content">
+                    <option value="Low">Low (40-50% GC)</option>
+                    <option value="Moderate">Moderate (50-55% GC)</option>
+                    <option value="High" selected>High (55-66% GC)</option>
+                    <option value="Very high">Very high (60-70% GC)</option>
+                </select><br>
 
-                    <!-- Dropdown for CpG Depletion Level -->
-                    <label for="cpg_depletion">Select CpG depletion level:</label>
-                    <select name="cpg_depletion">
-                        <option value="None">None</option>
-                        <option value="Moderate">Moderate</option>
-                        <option value="Stringent">Stringent</option>
-                    </select><br>
+                <label for="cpg_depletion">Select CpG depletion level:</label>
+                <select name="cpg_depletion">
+                    <option value="None">None</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="Stringent">Stringent</option>
+                </select><br>
 
-                    <!-- Dropdown for Codon Bias or GC Richness -->
-                    <label for="codon_bias_or_gc">Optimize for GC Richness or Codon Bias:</label>
-                    <select name="codon_bias_or_gc">
-                        <option value="GC">GC Richness</option>
-                        <option value="Codon Bias">Codon Bias</option>
-                    </select><br>
+                <label for="codon_bias_or_gc">Optimize for GC Richness or Codon Bias:</label>
+                <select name="codon_bias_or_gc">
+                    <option value="GC">GC Richness</option>
+                    <option value="Codon Bias">Codon Bias</option>
+                </select><br>
 
-                    <!-- Enzyme input for restriction sites -->
-                    <label for="enzymes">Enter enzyme restriction sites to exclude (comma-separated, optional):</label>
-                    <input type="text" name="enzymes" placeholder="e.g., EcoRI, BamHI"><br>
+                <label for="enzymes">Enter enzyme restriction sites to exclude (comma-separated, optional):</label>
+                <input type="text" name="enzymes" placeholder="e.g., EcoRI, BamHI"><br>
 
-                    <!-- Expedite processing option -->
-                    <label>Expedite processing speed:</label>
-                    <select name="expedition">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select><br>
-                </div>
+                <label>Expedite processing speed:</label>
+                <select name="expedition">
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                </select><br>
             </div>
 
-            <!-- Spinner -->
             <div id="spinner" class="spinner"></div>
-
-            <!-- Submit Button -->
             <button type="submit">Optimize Sequence</button>
         </form>
 
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages() %}
-          {% if messages %}
-            <ul class="flashes">
-              {% for message in messages %}
-                <li>{{ message }}</li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-        {% endwith %}
+        <div id="result"></div>
 
-        <!-- Display the optimized sequence (if available) -->
-        {% if optimized_seq %}
-            <h2>Optimized Sequence Result</h2>
-            <div class="result-box">
-                <code>{{ optimized_seq }}</code>
-            </div>
-            <!-- Copy Button -->
-            <button class="copy-button" onclick="copyToClipboard()">Copy Sequence</button>
-        {% endif %}
+        <!-- Copy Button -->
+        <button id="copy-button" class="copy-button" style="display: none;" onclick="copyToClipboard()">Copy Sequence</button>
     </div>
 </body>
 </html>
