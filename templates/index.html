@@ -96,6 +96,7 @@
             border-radius: 5px;
             margin: 20px 0;
             white-space: pre-wrap; /* Ensures long sequences wrap within the box */
+            word-break: break-word; /* Break words if needed */
             color: #FFFFFF; /* White text for the result box */
             font-family: "Courier New", monospace;
             min-height: 150px; /* Minimum height for the box */
@@ -103,6 +104,19 @@
             overflow-y: auto; /* Add scroll if content exceeds max height */
             width: 100%; /* Full width */
             box-sizing: border-box; /* Ensure padding and border are included in the element's width and height */
+        }
+
+        .copy-button {
+            background-color: #333333;
+            color: #FFFFFF;
+            padding: 5px 10px;
+            border: 1px solid #555555;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .copy-button:hover {
+            background-color: #555555;
         }
     </style>
     <script>

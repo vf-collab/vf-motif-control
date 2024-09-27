@@ -23,7 +23,8 @@ optimization_levels = {
     'Low (40-50% GC)': (45, 55),
     'Low medium (45-55% GC)': (55, 65),
     'High medium (50-60% GC)': (60, 73),
-    'High (55-66% GC)': (65, 77)
+    'High (55-66% GC)': (64, 77),
+    'Very high (60-70% GC)': (70, 80)
 }
 
 # Allowed characters for sequence input (Amino acid single-letter codes, *, X)
