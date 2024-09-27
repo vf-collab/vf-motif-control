@@ -5,3 +5,4 @@ biopython==1.83
 tqdm==4.65.0
 numpy==1.26.0
 pandas==2.0.3
+gevent
