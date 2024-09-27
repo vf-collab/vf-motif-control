@@ -8,7 +8,7 @@ app.secret_key = 'vector-barcelona-rain-tehran-obvious-shenanigans'  # Required 
 
 # Define a dictionary of codon tables and their corresponding CSV file paths
 codon_tables = {
-    'Homo sapiens': 'data/Homo.csv',
+    'Homo sapiens': 'data/homo.csv',
     'Mus musculus': 'data/Mus_musculus.csv',
     'Drosophila melanogaster': 'data/Drosophila_melanogaster.csv',
     'Glycine max': 'data/Glycine_max.csv',
