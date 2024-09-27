@@ -300,7 +300,7 @@ def screen_sequence(seq, window_size=100, stringent=True, quiet=True):
         return gc_content
 
     # Function to check for GC-rich regions
-    def check_gc_content(window, gc_threshold=80):
+    def check_gc_content(window, gc_threshold=70):
         gc_score = 0
         gc_issues = []
         gc_content = GC(window)
@@ -321,7 +321,6 @@ def screen_sequence(seq, window_size=100, stringent=True, quiet=True):
         factor = int(len(seq)/1000)
         one_size = int(len(seq)/factor)
         slithers = textwrap.wrap(seq, one_size)
-        score_threshold = score_threshold * factor
 
     for slither in slithers:
     
