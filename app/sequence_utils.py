@@ -319,7 +319,7 @@ def screen_sequence(seq, window_size=100, stringent=True, quiet=True):
     else:
         # For big sequences, split sequence into sections to avoid a mammoth job
         factor = int(len(seq)/1000)
-        one_size = int(len(seq)/factor)
+        one_size = int(len(seq)/factor/2)
         slithers = textwrap.wrap(seq, one_size)
 
     for slither in slithers:
