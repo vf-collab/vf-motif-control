@@ -10,8 +10,8 @@ app = Flask(__name__)
 
 # Celery configuration
 app.config.update(
-    CELERY_BROKER_URL='redis://localhost:6379/0',  # Using Redis as the broker
-    CELERY_RESULT_BACKEND='redis://localhost:6379/0'  # Store the result in Redis
+    CELERY_BROKER_URL='redis://209.97.136.147:6379/0',
+    CELERY_RESULT_BACKEND='redis://209.97.136.147:6379/0'
 )
 
 # Initialize Celery
