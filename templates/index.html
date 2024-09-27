@@ -133,6 +133,19 @@
         function showSpinner() {
             document.getElementById("spinner").style.display = "block"; // Show spinner
         }
+
+        // Copy the optimized sequence to clipboard
+        function copyToClipboard() {
+            var resultBox = document.querySelector('.result-box code');
+            var range = document.createRange();
+            range.selectNode(resultBox);
+            window.getSelection().removeAllRanges();  // Clear any previous selection
+            window.getSelection().addRange(range);    // Select the text
+            document.execCommand('copy');             // Copy the selected text to clipboard
+            window.getSelection().removeAllRanges();  // Deselect the text
+            
+            alert("Sequence copied to clipboard!");
+        }
     </script>
 </head>
 <body>
@@ -165,6 +178,7 @@
                         <option value="Low">Low (40-50% GC)</option>
                         <option value="Moderate">Moderate (50-55% GC)</option>
                         <option value="High" selected>High (55-66% GC)</option> <!-- Set 'High' as the default option -->
+                        <option value="Very high">Very high (60-70% GC)</option>
                     </select><br>
 
                     <!-- Dropdown for CpG Depletion Level -->
@@ -219,6 +233,8 @@
             <div class="result-box">
                 <code>{{ optimized_seq }}</code>
             </div>
+            <!-- Copy Button -->
+            <button class="copy-button" onclick="copyToClipboard()">Copy Sequence</button>
         {% endif %}
     </div>
 </body>
