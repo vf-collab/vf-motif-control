@@ -1,12 +1,15 @@
-from flask import Flask, render_template, request, flash, Response
-import pandas as pd
-import re
-from threading import Thread
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 import time
+import pandas as pd
+from threading import Thread
 from app import codon_optimization, pattern_generator
+import uuid
 
 app = Flask(__name__)
 app.secret_key = 'vector-barcelona-rain-tehran-obvious-shenanigans'  # Required for flashing messages
+
+# A dictionary to store progress of each task
+progress = {}
 
 # Define a dictionary of codon tables and their corresponding CSV file paths
 codon_tables = {
@@ -33,27 +36,38 @@ optimization_levels = {
 allowed_characters = set("ARNDCQEGHILKMFPSVTWYX*")
 
 
-# Helper function to send SSE progress updates
-def codon_optimization_with_progress(sequence, params):
-    def generate():
-        total_steps = 4  # Example total steps, modify based on actual steps
-        progress = 0
+def run_optimization(task_id, sanitized_sequence, selected_gc_opt, cpg_depletion_level, codon_bias_or_gc, pattern, pattern2, codon_df, expedition):
+    """
+    The function that performs codon optimization in a separate thread and updates progress.
+    """
+    total_steps = 100  # Assuming 100 steps for simplicity, adjust this dynamically based on your real task
+    progress[task_id] = 0  # Initialize progress
 
-        # Simulate long-running task (can remove once actual logic is in place)
-        for i in range(total_steps):
-            progress = int(((i + 1) / total_steps) * 100)
-            time.sleep(1)  # Simulate some task
-            yield f"data: {progress}\n\n"  # Send progress updates
+    try:
+        optimized_seq = codon_optimization(
+            uploaded_seq_file=sanitized_sequence,
+            cpg_depletion_level=cpg_depletion_level,
+            codon_bias_or_GC=codon_bias_or_gc,
+            pattern=pattern,
+            pattern2=pattern2,
+            codon_df=codon_df,
+            selected_GC_opt=selected_gc_opt,
+            expedite=expedition
+        )
 
-        optimized_seq = codon_optimization(**params)  # Run actual codon optimization
-        yield f"data: 100\n\n"  # Finish with 100% progress
+        # Simulate progress as optimization proceeds
+        for step in range(1, total_steps + 1):
+            time.sleep(0.1)  # Simulate a step (you should update this with real task steps)
+            progress[task_id] = step  # Update global progress
+        progress[task_id] = 100  # Mark the task as completed
 
-    return Response(generate(), mimetype='text/event-stream')
+    except Exception as e:
+        progress[task_id] = -1  # Error occurred, mark with -1
+        print(f"Error in codon optimization: {e}")
 
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    optimized_seq = None  # Initialize the result as None
     if request.method == "POST":
         try:
             # Retrieve and sanitize the sequence input
@@ -62,56 +76,61 @@ def index():
 
             # Check if sanitized sequence is valid (not empty and meets length criteria)
             if not sanitized_sequence:
-                flash("Error: The submitted sequence contains invalid characters or is empty. Please submit a valid DNA or protein sequence.")
-                return render_template("index.html", codon_tables=codon_tables.keys(), optimization_levels=optimization_levels.keys(), optimized_seq=None)
+                return jsonify({"error": "Invalid sequence submitted."}), 400
 
             # Get the selected codon table
             selected_codon_table = request.form.get("codon_table")
             codon_df = pd.read_csv(codon_tables[selected_codon_table])
 
-            # Handle whether advanced settings are enabled
+            # Handle advanced settings
             use_advanced_settings = request.form.get("use_advanced_settings") == "on"
             if use_advanced_settings:
                 # Get GC optimization level as a tuple
                 selected_gc_opt = optimization_levels[request.form.get("gc_content")]
-                # Get CpG depletion level and codon bias or GC selection
                 cpg_depletion_level = request.form.get("cpg_depletion")
                 codon_bias_or_gc = request.form.get("codon_bias_or_gc")
-                # Get enzymes input and generate patterns
                 enzyme_input = request.form.get("enzymes")
                 enzymes = re.split(',| ', enzyme_input) if enzyme_input else []  # Split enzyme input or leave empty
                 pattern, pattern2 = pattern_generator(enzymes)
                 expedition = request.form.get("expedition") == "Yes"
             else:
                 # Default settings
-                enzymes = []
                 selected_gc_opt = (63, 77)
                 cpg_depletion_level = "None"
                 codon_bias_or_gc = "GC richness"
-                pattern, pattern2 = pattern_generator(enzymes)
+                pattern, pattern2 = pattern_generator([])
                 expedition = True
 
-            # Create params for codon optimization
-            params = {
-                'uploaded_seq_file': sanitized_sequence,
-                'cpg_depletion_level': cpg_depletion_level,
-                'codon_bias_or_GC': codon_bias_or_gc,
-                'pattern': pattern,
-                'pattern2': pattern2,
-                'codon_df': codon_df,
-                'selected_GC_opt': selected_gc_opt,
-                'expedite': expedition
-            }
+            # Generate a unique task ID
+            task_id = str(uuid.uuid4())
 
-            # Start the optimization with progress updates
-            return codon_optimization_with_progress(sanitized_sequence, params)
+            # Start the codon optimization in a background thread
+            thread = Thread(target=run_optimization, args=(task_id, sanitized_sequence, selected_gc_opt, cpg_depletion_level, codon_bias_or_gc, pattern, pattern2, codon_df, expedition))
+            thread.start()
+
+            # Return the task ID to the client
+            return jsonify({"task_id": task_id})
 
         except Exception as e:
-            flash(f"Unexpected error occurred: {str(e)}")
-            return render_template("index.html", codon_tables=codon_tables.keys(), optimization_levels=optimization_levels.keys(), optimized_seq=None)
+            return jsonify({"error": str(e)}), 500
 
-    # Render the form and (if available) the optimized sequence
-    return render_template("index.html", codon_tables=codon_tables.keys(), optimization_levels=optimization_levels.keys(), optimized_seq=optimized_seq)
+    # Render the form
+    return render_template("index.html", codon_tables=codon_tables.keys(), optimization_levels=optimization_levels.keys())
+
+
+@app.route("/progress/<task_id>")
+def progress_stream(task_id):
+    """
+    Server-Sent Events (SSE) to provide real-time progress updates.
+    """
+    def generate():
+        while True:
+            task_progress = progress.get(task_id, 0)
+            yield f"data: {task_progress}\n\n"
+            if task_progress >= 100 or task_progress == -1:  # Stop when the task is done or an error occurs
+                break
+            time.sleep(1)
+    return Response(stream_with_context(generate()), mimetype="text/event-stream")
 
 
 if __name__ == "__main__":

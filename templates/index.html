@@ -166,26 +166,27 @@
             alert("Sequence copied to clipboard!");
         }
 
-        // Function to track progress via SSE
-        function startProgressTracking() {
-            const progressContainer = document.querySelector('.progress-container');
-            const progressBar = document.querySelector('.progress-bar');
+        function startProgressTracking(taskId) {
+            const evtSource = new EventSource(`/progress/${taskId}`);
 
-            const eventSource = new EventSource('/progress');
-            progressContainer.style.display = 'block';  // Show the progress bar
+            evtSource.addEventListener('message', function(event) {
+                const progress = event.data;  // progress percentage
+                const progressBar = document.querySelector('.progress-bar');
+                progressBar.style.width = progress + "%";
+                progressBar.textContent = progress + "%";
 
-            eventSource.onmessage = function(event) {
-                const progress = event.data;
-                progressBar.style.width = progress + '%';
-                progressBar.innerText = progress + '%';
-
-                // If the task is complete, close the event source
-                if (progress === "100") {
-                    eventSource.close();
-                    document.getElementById("spinner").style.display = "none";  // Hide spinner when done
+                // Close the event source if the task is done
+                if (progress >= 100) {
+                    evtSource.close();
                 }
+            }, false);
+
+            evtSource.onerror = function() {
+                console.log("Error or connection closed");
+                evtSource.close();
             };
         }
+
     </script>
 </head>
 <body>

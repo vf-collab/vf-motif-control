@@ -300,7 +300,7 @@ def screen_sequence(seq, window_size=100, stringent=True, quiet=True):
         return gc_content
 
     # Function to check for GC-rich regions
-    def check_gc_content(window, gc_threshold=70):
+    def check_gc_content(window, gc_threshold=80):
         gc_score = 0
         gc_issues = []
         gc_content = GC(window)
