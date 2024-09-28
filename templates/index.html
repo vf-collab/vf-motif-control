@@ -1,3 +1,4 @@
+<link rel="icon" href="{{ url_for('static', filename='favicon.png') }}">
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -87,26 +88,6 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Progress bar */
-        .progress-bar {
-            width: 100%;
-            background-color: #333333;
-            border: 1px solid #555555;
-            height: 20px;
-            border-radius: 5px;
-            margin-top: 20px;
-            display: none;
-        }
-        .progress-bar-fill {
-            width: 0%;
-            height: 100%;
-            background-color: #7683F0;
-            border-radius: 5px;
-            text-align: center;
-            color: white;
-            line-height: 20px;
-        }
-
         /* Result box styling */
         .result-box {
             background-color: #333333; /* Dark gray result box background */
@@ -148,46 +129,9 @@
             }
         }
 
-        // Handle form submission via JavaScript
-        function submitForm(event) {
-            event.preventDefault();  // Prevent default form submission
-
-            const formData = new FormData(event.target);
-            const formJSON = Object.fromEntries(formData.entries());
-
-            fetch('/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formJSON)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.task_id) {
-                    startProgressTracking(data.task_id);  // Start tracking progress with the task ID
-                }
-            })
-            .catch(error => console.error('Error:', error));
-        }
-
-        // Start progress tracking using Server-Sent Events (SSE)
-        function startProgressTracking(task_id) {
-            const progressBar = document.querySelector('.progress-bar');
-            const progressBarFill = document.querySelector('.progress-bar-fill');
-            progressBar.style.display = 'block';  // Show the progress bar
-
-            const eventSource = new EventSource(`/progress/${task_id}`);
-            eventSource.onmessage = function(event) {
-                const progress = parseInt(event.data);
-                progressBarFill.style.width = progress + '%';
-                progressBarFill.textContent = progress + '%';
-
-                if (progress >= 100) {
-                    eventSource.close();  // Stop listening once the task is completed
-                    // Optionally fetch the final result and display it here
-                }
-            };
+        // Show spinner when form is submitted
+        function showSpinner() {
+            document.getElementById("spinner").style.display = "block"; // Show spinner
         }
 
         // Copy the optimized sequence to clipboard
@@ -199,6 +143,7 @@
             window.getSelection().addRange(range);    // Select the text
             document.execCommand('copy');             // Copy the selected text to clipboard
             window.getSelection().removeAllRanges();  // Deselect the text
+            
             alert("Sequence copied to clipboard!");
         }
     </script>
@@ -208,7 +153,7 @@
         <h1>Sequence Optimizer</h1>
 
         <!-- Form to enter sequence and select codon table -->
-        <form method="POST" onsubmit="submitForm(event)">
+        <form method="POST" onsubmit="showSpinner()">
             <!-- Sequence Input -->
             <label for="sequence_input">Enter DNA or Protein sequence as raw text</label><br>
             <textarea name="sequence_input" rows="5" cols="50"></textarea><br>
@@ -230,11 +175,9 @@
                     <!-- Dropdown for selecting Target GC Richness -->
                     <label for="gc_content">Target GC Richness:</label>
                     <select id="gc_content" name="gc_content">
-                        <option value="Low">Low (40-45% GC)</option>
-                        <option value="Low medium">Low medium (45-50% GC)</option>
-                        <option value="High medium">Low medium (50-55% GC)</option>
-                        <option value="High" selected>High (55-60% GC)</option> <!-- Set 'High' as the default option -->
-                        <option value="Very high">Very high (60-65% GC)</option>
+                        <option value="Low">Low (40-50% GC)</option>
+                        <option value="Moderate">Moderate (50-55% GC)</option>
+                        <option value="High" selected>High (55-66% GC)</option> <!-- Set 'High' as the default option -->
                     </select><br>
 
                     <!-- Dropdown for CpG Depletion Level -->
@@ -265,10 +208,8 @@
                 </div>
             </div>
 
-            <!-- Progress Bar -->
-            <div class="progress-bar">
-                <div class="progress-bar-fill">0%</div>
-            </div>
+            <!-- Spinner -->
+            <div id="spinner" class="spinner"></div>
 
             <!-- Submit Button -->
             <button type="submit">Optimize Sequence</button>
