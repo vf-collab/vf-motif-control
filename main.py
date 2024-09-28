@@ -8,7 +8,7 @@ app.secret_key = 'your_secret_key'  # Required for flashing messages
 
 # Define a dictionary of codon tables and their corresponding CSV file paths
 codon_tables = {
-    'Homo sapiens': 'data/Homo.csv',
+    'Homo sapiens': 'data/homo.csv',
     'Mus musculus': 'data/Mus_musculus.csv',
     'Drosophila melanogaster': 'data/Drosophila_melanogaster.csv',
     'Glycine max': 'data/Glycine_max.csv',
@@ -20,10 +20,11 @@ codon_tables = {
 
 # Define GC optimization levels
 optimization_levels = {
-    'Low (40-50% GC)': (45, 55),
-    'Low medium (45-55% GC)': (55, 65),
-    'High medium (50-60% GC)': (60, 73),
-    'High (55-66% GC)': (65, 77)
+    'Low (40-45% GC)': (45, 55),
+    'Low medium (45-50% GC)': (55, 65),
+    'High medium (50-55% GC)': (60, 73),
+    'High (55-60% GC)': (65, 77),
+    'Very high (60-65% GC)': (70, 80)
 }
 
 # Allowed characters for sequence input (Amino acid single-letter codes, *, X)
