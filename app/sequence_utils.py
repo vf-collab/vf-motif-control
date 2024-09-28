@@ -140,14 +140,14 @@ def back_translate(peptide_seq, codon_dict, pattern, pattern2, selected_GC_opt):
     for chunk in chunks:
         t = [np.random.choice(codon_dict[i][0],1,p=codon_dict[i][1])[0] for i in chunk]
         t = ''.join(t)
-        if not_in(pattern, str(t)) and Seq(t).translate() == chunk and (selected_GC_opt[0]-4) <= GC(str(t)) <= (selected_GC_opt[1]+6):
+        if not_in(pattern, str(t)) and Seq(t).translate() == chunk and (selected_GC_opt[0]-2) <= GC(str(t)) <= (selected_GC_opt[1]+3):
             new = [new, t]
             new = ''.join(new)
         else:
             for q in range(100):
                 t = [np.random.choice(codon_dict[i][0],1,p=codon_dict[i][1])[0] for i in chunk]
                 t = ''.join(t)
-                if not_in(pattern, str(t)) and Seq(t).translate() == chunk and (selected_GC_opt[0]-12) <= GC(str(t)) <= (selected_GC_opt[1]+18):
+                if not_in(pattern, str(t)) and Seq(t).translate() == chunk and (selected_GC_opt[0]-6) <= GC(str(t)) <= (selected_GC_opt[1]+9):
                     new = [new, t]
                     new = ''.join(new)
                     break
