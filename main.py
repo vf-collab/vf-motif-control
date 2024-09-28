@@ -20,9 +20,9 @@ codon_tables = {
 
 # Define GC optimization levels
 optimization_levels = {
-    'Low (40-50% GC)': (45, 55),
-    'Medium (45-55% GC)': (55, 65),
-    'High (55-65% GC)': (65, 80)
+    'Low (40-50% GC)': (40, 55),
+    'Medium (45-55% GC)': (55, 70),
+    'High (55-65% GC)': (70, 85)
 }
 
 # Allowed characters for sequence input (Amino acid single-letter codes, *, X)
