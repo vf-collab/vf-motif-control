@@ -49,7 +49,7 @@ def index():
             codon_df = pd.read_csv(codon_tables[selected_codon_table])
 
             # Check if advanced settings are enabled
-            use_advanced_settings = request.form.get("use_advanced_settings")  # Checkbox
+            use_advanced_settings = request.form.get("use_advanced_settings") == "on"  # Now correctly handled
 
             if use_advanced_settings:
                 # Get GC optimization level as a tuple

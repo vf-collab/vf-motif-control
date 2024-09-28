@@ -122,10 +122,14 @@
     <script>
         function toggleAdvancedSettings() {
             var advancedSettings = document.getElementById("advanced-settings");
+            var advancedSettingsInput = document.getElementById("use_advanced_settings");
+
             if (advancedSettings.style.display === "none" || advancedSettings.style.display === "") {
                 advancedSettings.style.display = "block";
+                advancedSettingsInput.value = "on";  // Mark as enabled
             } else {
                 advancedSettings.style.display = "none";
+                advancedSettingsInput.value = "off"; // Mark as disabled
             }
         }
 
@@ -154,6 +158,9 @@
 
         <!-- Form to enter sequence and select codon table -->
         <form method="POST" onsubmit="showSpinner()">
+            <!-- Hidden input for tracking advanced settings -->
+            <input type="hidden" id="use_advanced_settings" name="use_advanced_settings" value="off">
+
             <!-- Sequence Input -->
             <label for="sequence_input">Enter DNA or Protein sequence as raw text</label><br>
             <textarea name="sequence_input" rows="5" cols="50"></textarea><br>
@@ -166,11 +173,8 @@
                 {% endfor %}
             </select><br>
 
-            <!-- Checkbox for enabling advanced settings -->
-            <label>
-                <input type="checkbox" name="use_advanced_settings" value="on">
-                Enable Advanced Settings
-            </label>
+            <!-- Advanced Settings button -->
+            <button type="button" class="advanced-button" onclick="toggleAdvancedSettings()">Advanced Settings</button>
 
             <!-- Advanced settings (initially hidden) -->
             <div id="advanced-settings" class="advanced-settings">
