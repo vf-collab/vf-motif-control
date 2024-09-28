@@ -66,55 +66,67 @@ def run_optimization(task_id, sanitized_sequence, selected_gc_opt, cpg_depletion
         print(f"Error in codon optimization: {e}")
 
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 @app.route("/", methods=["GET", "POST"])
 def index():
+    optimized_seq = None
     if request.method == "POST":
         try:
+            logging.debug('Form submission started')
             # Retrieve and sanitize the sequence input
-            sequence_input = request.form.get("sequence_input").strip().upper()
+            form_data = request.get_json()  # This captures JSON data from the request body
+            sequence_input = form_data.get("sequence_input").strip().upper()
             sanitized_sequence = ''.join([char for char in sequence_input if char in allowed_characters])
 
-            # Check if sanitized sequence is valid (not empty and meets length criteria)
+            logging.debug('Sanitized Sequence: %s', sanitized_sequence)
+
+            # Check if sanitized sequence is valid
             if not sanitized_sequence:
-                return jsonify({"error": "Invalid sequence submitted."}), 400
+                return jsonify({"error": "Invalid sequence"}), 400
 
             # Get the selected codon table
-            selected_codon_table = request.form.get("codon_table")
+            selected_codon_table = form_data.get("codon_table")
             codon_df = pd.read_csv(codon_tables[selected_codon_table])
 
             # Handle advanced settings
-            use_advanced_settings = request.form.get("use_advanced_settings") == "on"
+            use_advanced_settings = form_data.get("use_advanced_settings") == "on"
             if use_advanced_settings:
-                # Get GC optimization level as a tuple
-                selected_gc_opt = optimization_levels[request.form.get("gc_content")]
-                cpg_depletion_level = request.form.get("cpg_depletion")
-                codon_bias_or_gc = request.form.get("codon_bias_or_gc")
-                enzyme_input = request.form.get("enzymes")
-                enzymes = re.split(',| ', enzyme_input) if enzyme_input else []  # Split enzyme input or leave empty
+                selected_gc_opt = optimization_levels[form_data.get("gc_content")]
+                cpg_depletion_level = form_data.get("cpg_depletion")
+                codon_bias_or_gc = form_data.get("codon_bias_or_gc")
+                enzyme_input = form_data.get("enzymes")
+                enzymes = re.split(',| ', enzyme_input) if enzyme_input else []
                 pattern, pattern2 = pattern_generator(enzymes)
-                expedition = request.form.get("expedition") == "Yes"
+                expedition = form_data.get("expedition") == "Yes"
             else:
-                # Default settings
+                enzymes = []
                 selected_gc_opt = (63, 77)
                 cpg_depletion_level = "None"
                 codon_bias_or_gc = "GC richness"
-                pattern, pattern2 = pattern_generator([])
+                pattern, pattern2 = pattern_generator(enzymes)
                 expedition = True
 
-            # Generate a unique task ID
-            task_id = str(uuid.uuid4())
+            logging.debug('Calling codon optimization')
+            # Trigger the background task
+            task = run_codon_optimization.delay(sanitized_sequence, selected_codon_table, use_advanced_settings, {
+                'selected_gc_opt': selected_gc_opt,
+                'cpg_depletion_level': cpg_depletion_level,
+                'codon_bias_or_gc': codon_bias_or_gc,
+                'pattern': pattern,
+                'pattern2': pattern2,
+                'expedition': expedition
+            })
 
-            # Start the codon optimization in a background thread
-            thread = Thread(target=run_optimization, args=(task_id, sanitized_sequence, selected_gc_opt, cpg_depletion_level, codon_bias_or_gc, pattern, pattern2, codon_df, expedition))
-            thread.start()
-
-            # Return the task ID to the client
-            return jsonify({"task_id": task_id})
+            logging.debug('Task started, task id: %s', task.id)
+            # Return task ID for progress tracking
+            return jsonify({"task_id": task.id})
 
         except Exception as e:
+            logging.exception('Error occurred during form submission')
             return jsonify({"error": str(e)}), 500
 
-    # Render the form
     return render_template("index.html", codon_tables=codon_tables.keys(), optimization_levels=optimization_levels.keys())
 
 
