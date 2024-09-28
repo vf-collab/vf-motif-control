@@ -1,6 +1,8 @@
-from flask import Flask, render_template, request, flash
+from flask import Flask, render_template, request, flash, Response
 import pandas as pd
 import re
+from threading import Thread
+import time
 from app import codon_optimization, pattern_generator
 
 app = Flask(__name__)
@@ -29,6 +31,25 @@ optimization_levels = {
 
 # Allowed characters for sequence input (Amino acid single-letter codes, *, X)
 allowed_characters = set("ARNDCQEGHILKMFPSVTWYX*")
+
+
+# Helper function to send SSE progress updates
+def codon_optimization_with_progress(sequence, params):
+    def generate():
+        total_steps = 4  # Example total steps, modify based on actual steps
+        progress = 0
+
+        # Simulate long-running task (can remove once actual logic is in place)
+        for i in range(total_steps):
+            progress = int(((i + 1) / total_steps) * 100)
+            time.sleep(1)  # Simulate some task
+            yield f"data: {progress}\n\n"  # Send progress updates
+
+        optimized_seq = codon_optimization(**params)  # Run actual codon optimization
+        yield f"data: 100\n\n"  # Finish with 100% progress
+
+    return Response(generate(), mimetype='text/event-stream')
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -70,17 +91,20 @@ def index():
                 pattern, pattern2 = pattern_generator(enzymes)
                 expedition = True
 
-            # Call codon optimization function
-            optimized_seq = codon_optimization(
-                uploaded_seq_file=sanitized_sequence,
-                cpg_depletion_level=cpg_depletion_level,
-                codon_bias_or_GC=codon_bias_or_gc,
-                pattern=pattern,
-                pattern2=pattern2,
-                codon_df=codon_df,
-                selected_GC_opt=selected_gc_opt,
-                expedite=expedition
-            )
+            # Create params for codon optimization
+            params = {
+                'uploaded_seq_file': sanitized_sequence,
+                'cpg_depletion_level': cpg_depletion_level,
+                'codon_bias_or_GC': codon_bias_or_gc,
+                'pattern': pattern,
+                'pattern2': pattern2,
+                'codon_df': codon_df,
+                'selected_GC_opt': selected_gc_opt,
+                'expedite': expedition
+            }
+
+            # Start the optimization with progress updates
+            return codon_optimization_with_progress(sanitized_sequence, params)
 
         except Exception as e:
             flash(f"Unexpected error occurred: {str(e)}")
@@ -88,6 +112,7 @@ def index():
 
     # Render the form and (if available) the optimized sequence
     return render_template("index.html", codon_tables=codon_tables.keys(), optimization_levels=optimization_levels.keys(), optimized_seq=optimized_seq)
+
 
 if __name__ == "__main__":
     app.run(debug=True)

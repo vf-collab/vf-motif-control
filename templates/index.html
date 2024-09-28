@@ -118,6 +118,25 @@
         .copy-button:hover {
             background-color: #555555;
         }
+
+        /* Progress bar styling */
+        .progress-container {
+            display: none;
+            width: 100%;
+            background-color: #444444;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 30px;
+            background-color: #7683F0;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+            border-radius: 5px;
+        }
     </style>
     <script>
         function toggleAdvancedSettings() {
@@ -146,6 +165,27 @@
             
             alert("Sequence copied to clipboard!");
         }
+
+        // Function to track progress via SSE
+        function startProgressTracking() {
+            const progressContainer = document.querySelector('.progress-container');
+            const progressBar = document.querySelector('.progress-bar');
+
+            const eventSource = new EventSource('/progress');
+            progressContainer.style.display = 'block';  // Show the progress bar
+
+            eventSource.onmessage = function(event) {
+                const progress = event.data;
+                progressBar.style.width = progress + '%';
+                progressBar.innerText = progress + '%';
+
+                // If the task is complete, close the event source
+                if (progress === "100") {
+                    eventSource.close();
+                    document.getElementById("spinner").style.display = "none";  // Hide spinner when done
+                }
+            };
+        }
     </script>
 </head>
 <body>
@@ -153,7 +193,7 @@
         <h1>Sequence Optimizer</h1>
 
         <!-- Form to enter sequence and select codon table -->
-        <form method="POST" onsubmit="showSpinner()">
+        <form method="POST" onsubmit="startProgressTracking()">
             <!-- Sequence Input -->
             <label for="sequence_input">Enter DNA or Protein sequence as raw text</label><br>
             <textarea name="sequence_input" rows="5" cols="50"></textarea><br>
@@ -207,6 +247,11 @@
                         <option value="No">No</option>
                     </select><br>
                 </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-container">
+                <div class="progress-bar">0%</div>
             </div>
 
             <!-- Spinner -->
