@@ -166,8 +166,11 @@
                 {% endfor %}
             </select><br>
 
-            <!-- Advanced Settings button -->
-            <button type="button" class="advanced-button" onclick="toggleAdvancedSettings()">Advanced Settings</button>
+            <!-- Checkbox for enabling advanced settings -->
+            <label>
+                <input type="checkbox" name="use_advanced_settings" value="on">
+                Enable Advanced Settings
+            </label>
 
             <!-- Advanced settings (initially hidden) -->
             <div id="advanced-settings" class="advanced-settings">

@@ -36,7 +36,7 @@ def index():
     if request.method == "POST":
         try:
             # Retrieve and sanitize the sequence input
-            sequence_input = request.form.get("sequence_input").strip().upper()
+            sequence_input = request.form.get("sequence_input", "").strip().upper()
             sanitized_sequence = ''.join([char for char in sequence_input if char in allowed_characters])
 
             # Check if sanitized sequence is valid (not empty and meets length criteria)
@@ -48,8 +48,9 @@ def index():
             selected_codon_table = request.form.get("codon_table")
             codon_df = pd.read_csv(codon_tables[selected_codon_table])
 
-            # Handle whether advanced settings are enabled
-            use_advanced_settings = request.form.get("use_advanced_settings") == "on"
+            # Check if advanced settings are enabled
+            use_advanced_settings = request.form.get("use_advanced_settings")  # Checkbox
+
             if use_advanced_settings:
                 # Get GC optimization level as a tuple
                 selected_gc_opt = optimization_levels[request.form.get("gc_content")]
@@ -57,20 +58,20 @@ def index():
                 cpg_depletion_level = request.form.get("cpg_depletion")
                 codon_bias_or_gc = request.form.get("codon_bias_or_gc")
                 # Get enzymes input and generate patterns
-                enzyme_input = request.form.get("enzymes")
-                enzymes = re.split(',| ', enzyme_input) if enzyme_input else []  # Split enzyme input or leave empty
+                enzyme_input = request.form.get("enzymes", "")
+                enzymes = re.split(r',|\s+', enzyme_input.strip()) if enzyme_input else []
                 pattern, pattern2 = pattern_generator(enzymes)
                 expedition = request.form.get("expedition") == "Yes"
             else:
                 # Default settings
                 enzymes = []
-                selected_gc_opt = (63, 77)
+                selected_gc_opt = optimization_levels['High (55-60% GC)']
                 cpg_depletion_level = "None"
                 codon_bias_or_gc = "GC richness"
                 pattern, pattern2 = pattern_generator(enzymes)
                 expedition = True
 
-            # Call codon optimization function
+            # Call the codon optimization function
             optimized_seq = codon_optimization(
                 uploaded_seq_file=sanitized_sequence,
                 cpg_depletion_level=cpg_depletion_level,
