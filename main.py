@@ -63,7 +63,7 @@ def index():
             else:
                 # Default settings
                 enzymes = []
-                selected_gc_opt = optimization_levels['High (55-60% GC)']
+                selected_gc_opt = optimization_levels['High (55-65% GC)']
                 cpg_depletion_level = "None"
                 codon_bias_or_gc = "GC richness"
                 pattern, pattern2 = pattern_generator(enzymes)
