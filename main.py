@@ -6,7 +6,7 @@ from app import codon_optimization, pattern_generator
 import uuid
 
 app = Flask(__name__)
-app.secret_key = 'vector-barcelona-rain-tehran-obvious-shenanigans'  # Required for flashing messages
+app.secret_key = 'vector-barcelona-rain-tehran-obvious-eixample'  # Required for flashing messages
 
 # A dictionary to store progress of each task
 progress = {}
@@ -25,11 +25,11 @@ codon_tables = {
 
 # Define GC optimization levels
 optimization_levels = {
-    'Low (40-50% GC)': (45, 55),
-    'Low medium (45-55% GC)': (55, 65),
-    'High medium (50-60% GC)': (60, 73),
-    'High (55-66% GC)': (64, 77),
-    'Very high (60-70% GC)': (75, 85)
+    'Low (40-45% GC)': (45, 55),
+    'Low medium (45-50% GC)': (55, 65),
+    'High medium (50-55% GC)': (60, 73),
+    'High (55-60% GC)': (64, 77),
+    'Very high (60-65% GC)': (75, 85)
 }
 
 # Allowed characters for sequence input (Amino acid single-letter codes, *, X)
