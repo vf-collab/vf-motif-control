@@ -1,92 +1,91 @@
 from flask import Flask, render_template, request, flash
-import pandas as pd
+from Bio.Seq import Seq
+from itertools import product
+from typing import List, Tuple
 import re
-from app import codon_optimization, pattern_generator
+import random
+from app.motif_optimizer import *
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Required for flashing messages
 
-# Define a dictionary of codon tables and their corresponding CSV file paths
-codon_tables = {
-    'Homo sapiens': 'data/homo.csv',
-    'Mus musculus': 'data/Mus_musculus.csv',
-    'Drosophila melanogaster': 'data/Drosophila_melanogaster.csv',
-    'Glycine max': 'data/Glycine_max.csv',
-    'Staph aureus': 'data/Staph_aureus.csv',
-    'Chlamydomonas reinhardtii': 'data/Chlamydomonas_reinhardtii.csv',
-    'AAV2': 'data/AAV2.csv',
-    'HIV-1': 'data/HIV-1.csv'
-}
 
-# Define GC optimization levels
-optimization_levels = {
-    'Low (40-50% GC)': (40, 55),
-    'Medium (45-55% GC)': (55, 70),
-    'High (55-65% GC)': (70, 85)
-}
+# Allowed characters for sequence input
+allowed_characters = set("ATUGC*")
 
-# Allowed characters for sequence input (Amino acid single-letter codes, *, X)
-allowed_characters = set("ARNDCQEGHILKMFPSVTWYX*")
+# Define options
+IUPAC_options = {
+    'Insert': "Insert",
+    'Remove': "Remove"
+}
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     optimized_seq = None  # Initialize the result as None
+    sanitized_sequence = None
+    exact_matches = 0
+    new_exact_matches = 0
     if request.method == "POST":
         try:
             # Retrieve and sanitize the sequence input
             sequence_input = request.form.get("sequence_input", "").strip().upper()
-            sanitized_sequence = ''.join([char for char in sequence_input if char in allowed_characters])
+            modified_sequence_input = sequence_input.replace("U", "T").replace("X", "*")
+            sanitized_sequence = ''.join([char for char in modified_sequence_input if char in allowed_characters])
 
             # Check if sanitized sequence is valid (not empty and meets length criteria)
             if not sanitized_sequence:
-                flash("Error: The submitted sequence contains invalid characters or is empty. Please submit a valid DNA or protein sequence.")
-                return render_template("index.html", codon_tables=codon_tables.keys(), optimization_levels=optimization_levels.keys(), optimized_seq=None)
+                flash("Error: The submitted sequence contains invalid characters or is empty. Please submit a valid DNA sequence.")
+                return render_template("index.html", optimized_seq=None, exact_matches=None, new_exact_matches=None)
 
-            # Get the selected codon table
-            selected_codon_table = request.form.get("codon_table")
-            codon_df = pd.read_csv(codon_tables[selected_codon_table])
+            # Choose whether to insert or delete motifs
+            selected_optimization = IUPAC_options[request.form.get("iupac_option")]
+            
+            # Get the iupac motif
+            iupac_motifs = request.form.get("iupac", "")
+            iupac_list = re.split(r',|\s+', iupac_motifs.strip()) if iupac_motifs else []
+            iupac_list = list(filter(None, iupac_list))
+            print(iupac_list)
 
-            # Check if advanced settings are enabled
-            use_advanced_settings = request.form.get("use_advanced_settings") == "on"  # Now correctly handled
-
-            if use_advanced_settings:
-                # Get GC optimization level as a tuple
-                selected_gc_opt = optimization_levels[request.form.get("gc_content")]
-                # Get CpG depletion level and codon bias or GC selection
-                cpg_depletion_level = request.form.get("cpg_depletion")
-                codon_bias_or_gc = request.form.get("codon_bias_or_gc")
-                # Get enzymes input and generate patterns
-                enzyme_input = request.form.get("enzymes", "")
-                enzymes = re.split(r',|\s+', enzyme_input.strip()) if enzyme_input else []
-                pattern, pattern2 = pattern_generator(enzymes)
-                expedition = request.form.get("expedition") == "Yes"
-            else:
-                # Default settings
-                enzymes = []
-                selected_gc_opt = optimization_levels['High (55-65% GC)']
-                cpg_depletion_level = "None"
-                codon_bias_or_gc = "GC richness"
-                pattern, pattern2 = pattern_generator(enzymes)
-                expedition = True
-
-            # Call the codon optimization function
-            optimized_seq = codon_optimization(
-                uploaded_seq_file=sanitized_sequence,
-                cpg_depletion_level=cpg_depletion_level,
-                codon_bias_or_GC=codon_bias_or_gc,
-                pattern=pattern,
-                pattern2=pattern2,
-                codon_df=codon_df,
-                selected_GC_opt=selected_gc_opt,
-                expedite=expedition
-            )
+            # Call the motif optimization function
+            if selected_optimization == "Insert":
+                for iupac_motif in iupac_list:
+                    x, y, z = insert_motif(
+                        dna_sequence=sanitized_sequence,
+                        iupac=iupac_motif.upper())
+                    sanitized_sequence = x
+                    exact_matches += y
+                for iupac_motif in iupac_list:
+                    c = count_motif(
+                        dna_sequence=sanitized_sequence,
+                        iupac=iupac_motif.upper())
+                    new_exact_matches += c
+                    
+            elif selected_optimization == "Remove":
+                for iupac_motif in iupac_list:
+                    x, y, z = destroy_motif(
+                        dna_sequence=sanitized_sequence,
+                        iupac=iupac_motif.upper())
+                    sanitized_sequence = x
+                    exact_matches += y
+                for iupac_motif in iupac_list:
+                    c = count_motif(
+                        dna_sequence=sanitized_sequence,
+                        iupac=iupac_motif.upper())
+                    new_exact_matches += c
 
         except Exception as e:
             flash(f"Unexpected error occurred: {str(e)}")
-            return render_template("index.html", codon_tables=codon_tables.keys(), optimization_levels=optimization_levels.keys(), optimized_seq=None)
+            return render_template("index.html", optimized_seq=None, exact_matches=None, new_exact_matches=None)
 
     # Render the form and (if available) the optimized sequence
-    return render_template("index.html", codon_tables=codon_tables.keys(), optimization_levels=optimization_levels.keys(), optimized_seq=optimized_seq)
+    return render_template("index.html", optimized_seq=sanitized_sequence, exact_matches=exact_matches, new_exact_matches=new_exact_matches)
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+"""
+Copyright (c) 2024 VECTOR FUTURES LTD
+All rights reserved.
+This file is part of the Vector Futures Codon Optimization App and may not be copied, distributed, or modified without express written permission.
+"""

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sequence Optimizer</title>
+    <title>Motif Control App</title>
     <style>
         /* Define your updated color theme */
         body {
@@ -90,130 +90,58 @@
 
         /* Result box styling */
         .result-box {
-            background-color: #333333; /* Dark gray result box background */
-            padding: 20px;
-            border: 2px solid #555555; /* Slightly lighter border */
-            border-radius: 5px;
-            margin: 20px 0;
-            white-space: pre-wrap; /* Ensures long sequences wrap within the box */
-            word-break: break-word; /* Break words if needed */
-            color: #FFFFFF; /* White text for the result box */
-            font-family: "Courier New", monospace;
-            min-height: 150px; /* Minimum height for the box */
-            max-height: 500px; /* Max height with scroll if content is too large */
-            overflow-y: auto; /* Add scroll if content exceeds max height */
-            width: 100%; /* Full width */
-            box-sizing: border-box; /* Ensure padding and border are included in the element's width and height */
+            font-family: Helvetica, sans-serif;  /* Set a clean, sans-serif font */
+            font-size: 14px;                 /* Smaller, readable font size */
+            line-height: 1.5;                /* Adjust line spacing for better readability */
+            padding: 10px;                   /* Add padding for spacing within the box */
+            border: 1px solid #555555;     /* Slightly lighter border */
+            background-color: #2C2C2C;     /* Dark input background */
+            border-radius: 5px;              /* Rounded corners for a smoother look */
+            color: #FFFFFF;                /* White input text */
+            word-wrap: break-word;           /* Prevent long words from overflowing */
+        }
+        .result-box h2 {
+            margin-top: 0;                   /* Remove extra spacing from h2 */
+        }
+        .result-box ul {
+            padding-left: 20px;              /* Indent list items slightly */
+            margin-top: 5px;
+        }
+        .result-box ul li {
+            margin-bottom: 4px;              /* Reduce space between list items */
         }
 
-        .copy-button {
-            background-color: #333333;
-            color: #FFFFFF;
-            padding: 5px 10px;
-            border: 1px solid #555555;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        .copy-button:hover {
-            background-color: #555555;
-        }
     </style>
     <script>
-        function toggleAdvancedSettings() {
-            var advancedSettings = document.getElementById("advanced-settings");
-            var advancedSettingsInput = document.getElementById("use_advanced_settings");
-
-            if (advancedSettings.style.display === "none" || advancedSettings.style.display === "") {
-                advancedSettings.style.display = "block";
-                advancedSettingsInput.value = "on";  // Mark as enabled
-            } else {
-                advancedSettings.style.display = "none";
-                advancedSettingsInput.value = "off"; // Mark as disabled
-            }
-        }
 
         // Show spinner when form is submitted
         function showSpinner() {
             document.getElementById("spinner").style.display = "block"; // Show spinner
         }
 
-        // Copy the optimized sequence to clipboard
-        function copyToClipboard() {
-            var resultBox = document.querySelector('.result-box code');
-            var range = document.createRange();
-            range.selectNode(resultBox);
-            window.getSelection().removeAllRanges();  // Clear any previous selection
-            window.getSelection().addRange(range);    // Select the text
-            document.execCommand('copy');             // Copy the selected text to clipboard
-            window.getSelection().removeAllRanges();  // Deselect the text
-            
-            alert("Sequence copied to clipboard!");
-        }
     </script>
 </head>
 <body>
     <div class="form-container">
-        <h1>Sequence Optimizer</h1>
+        <h1>Sequence Checker</h1>
 
         <!-- Form to enter sequence and select codon table -->
         <form method="POST" onsubmit="showSpinner()">
-            <!-- Hidden input for tracking advanced settings -->
-            <input type="hidden" id="use_advanced_settings" name="use_advanced_settings" value="off">
 
             <!-- Sequence Input -->
-            <label for="sequence_input">Enter DNA or Protein sequence as raw text</label><br>
+            <label for="sequence_input">Enter DNA or mRNA sequence as raw text</label><br>
             <textarea name="sequence_input" rows="5" cols="50"></textarea><br>
 
-            <!-- Dropdown for selecting codon table -->
-            <label for="codon_table">Select a codon table:</label>
-            <select name="codon_table">
-                {% for table in codon_tables %}
-                    <option value="{{ table }}">{{ table }}</option>
-                {% endfor %}
+            <!-- Dropdown for selecting score threshold -->
+            <label for="iupac_option">Select whether to insert or remove motifs from the entered DNA sequence:</label>
+            <select id="iupac_option" name="iupac_option">
+                <option value="Insert" selected>Insert</option>
+                <option value="Remove">Remove</option>
             </select><br>
 
-            <!-- Advanced Settings button -->
-            <button type="button" class="advanced-button" onclick="toggleAdvancedSettings()">Advanced Settings</button>
-
-            <!-- Advanced settings (initially hidden) -->
-            <div id="advanced-settings" class="advanced-settings">
-                <div class="advanced-settings-container">
-                    <!-- Dropdown for selecting Target GC Richness -->
-                    <label for="gc_content">Target GC Richness:</label>
-                    <select id="gc_content" name="gc_content">
-                        <option value="Low (40-50% GC)">Low (40-50% GC)</option>
-                        <option value="Medium (45-55% GC)">High medium (45-55% GC)</option>
-                        <option value="High (55-65% GC)" selected>High (55-65% GC)</option> <!-- Set 'High' as the default option -->
-                    </select><br>
-
-                    <!-- Dropdown for CpG Depletion Level -->
-                    <label for="cpg_depletion">Select CpG depletion level:</label>
-                    <select name="cpg_depletion">
-                        <option value="None">None</option>
-                        <option value="Moderate">Moderate</option>
-                        <option value="Stringent">Stringent</option>
-                    </select><br>
-
-                    <!-- Dropdown for Codon Bias or GC Richness -->
-                    <label for="codon_bias_or_gc">Optimize for GC Richness or Codon Bias:</label>
-                    <select name="codon_bias_or_gc">
-                        <option value="GC">GC Richness</option>
-                        <option value="Codon Bias">Codon Bias</option>
-                    </select><br>
-
-                    <!-- Enzyme input for restriction sites -->
-                    <label for="enzymes">Enter enzyme restriction sites to exclude (comma-separated, optional):</label>
-                    <input type="text" name="enzymes" placeholder="e.g., EcoRI, BamHI"><br>
-
-                    <!-- Expedite processing option -->
-                    <label>Expedite processing speed:</label>
-                    <select name="expedition">
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                    </select><br>
-                </div>
-            </div>
+            <!-- Motif Input -->
+            <label for="iupac">Motifs to insert or remove (IUPAC notation):</label>
+            <input type="text" name="iupac" placeholder="e.g. AGGTRRNN, DRACH"><br>
 
             <!-- Spinner -->
             <div id="spinner" class="spinner"></div>
@@ -233,15 +161,16 @@
           {% endif %}
         {% endwith %}
 
-        <!-- Display the optimized sequence (if available) -->
+        <!-- Display the output -->
         {% if optimized_seq %}
-            <h2>Optimized Sequence Result</h2>
+            <h2>Result</h2>
             <div class="result-box">
-                <code>{{ optimized_seq }}</code>
-            </div>
-            <!-- Copy Button -->
-            <button class="copy-button" onclick="copyToClipboard()">Copy Sequence</button>
+                <p>Optimized sequence: {{ optimized_seq }}</p> <!-- Displays optimized sequence -->
+                <p>Original motifs: {{ exact_matches }}</p> <!-- Displays original sites -->
+                <p>New motifs: {{ new_exact_matches }}</p> <!-- Displays new number of sites -->
+            </div> <!-- Close result-box div here -->
         {% endif %}
+
     </div>
 </body>
 </html>
